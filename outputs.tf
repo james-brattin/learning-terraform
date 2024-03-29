@@ -1,5 +1,5 @@
-output "lambda_bucket_name" {
-  description = "Name of the S3 bucket used to store function code."
+output "function_name" {
+  description = "Name of the Lambda function."
 
-  value = aws_s3_object.lambda_hello_world.id
+  value = aws_lambda_function.hello_world.function_name
 }
