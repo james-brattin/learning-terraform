@@ -8,6 +8,8 @@ Repo for learning terraform
 
 ✅ Zipped up and uploaded lambda function to bucket
 
-WIP: Create a lambda function
+✅ Create a lambda function
 
-TODO: Make the lambda function accessible behind the AWS API Gateway
+WIP: Make the lambda function accessible behind the AWS API Gateway
+
+TODO: Publish a lambda function written in Go.
