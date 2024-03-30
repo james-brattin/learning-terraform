@@ -9,6 +9,7 @@
   "author": "James Brattin",
   "license": "ISC",
   "dependencies": {
-    "aws-sdk": "^2.1589.0"
+    "@aws-sdk/client-dynamodb": "^3.540.0",
+    "@aws-sdk/client-lambda": "^3.540.0"
   }
 }

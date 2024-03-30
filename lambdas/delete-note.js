@@ -1,20 +1,22 @@
-const AWS = require("aws-sdk");
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+
 const NOTES_TABLE = process.env.NOTES_TABLE;
 
-const documentClient = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
 
 module.exports.handler = async (event, context) => {
- const id = event.body.id;
- await documentClient
-   .delete({
-     TableName: NOTES_TABLE,
-     Key: {
-       noteId: id,
-     },
-   }).promise();
-      
- return {
-   statusCode: 200,
-   body: JSON.stringify({ message: "Item Deleted" }),
- };
+  const id = event.body.id;
+
+  const command = new DeleteCommand({
+    TableName: NOTES_TABLE,
+    Key: {
+      noteId: id
+    },
+  });
+
+  const response = await docClient.send(command);
+
+  return response;
 };
