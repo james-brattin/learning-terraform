@@ -4,12 +4,10 @@ Repo for learning terraform
 
 ## Milestones
 
-✅ Created an S3 bucket
-
-✅ Zipped up and uploaded lambda function to bucket
-
-✅ Create a lambda function
-
-WIP: Make the lambda function accessible behind the AWS API Gateway
+- [x] Created an S3 bucket
+- [x] Zipped up and uploaded lambda function to bucket
+- [x] Create a lambda function
+- [x] Make the lambda function accessible behind the AWS API Gateway
+- [ ] Add a dynamoDB table and CRUD lambda functions accessible behind api gateway
 
 TODO: Publish a lambda function written in Go.

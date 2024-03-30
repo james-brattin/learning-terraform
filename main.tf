@@ -1,51 +1,107 @@
-# Create a bucket for holding the zipped up lambda function
-
-resource "aws_s3_bucket" "brattin-test1-s3" {
-   bucket = "brattin-test1-s3"
-
-   tags = {
-     Name        = "My first bucket"
-     Environment = "Dev"
-   }
+resource "aws_dynamodb_table" "brattin_notes_table" {
+  name = "brattin-notes-table"
+  billing_mode = "PROVISIONED"
+  read_capacity= "30"
+  write_capacity= "30"
+  attribute {
+    name = "noteId"
+    type = "S"
+  }
+  hash_key = "noteId"
 }
 
-# Zip and upload serverless function to S3 bucket above
+resource "aws_iam_role_policy" "dynamodb-lambda-policy" {
+  name = "dynamodb_lambda_policy"
+  role = aws_iam_role.lambda_exec.id
+   policy = jsonencode({
+      "Version" : "2012-10-17",
+      "Statement" : [
+        {
+           "Effect" : "Allow",
+           "Action" : ["dynamodb:*"],
+           "Resource" : "${aws_dynamodb_table.tf_notes_table.arn}"
+        }
+      ]
+   })
+}
 
-data "archive_file" "lambda_hello_world" {
+data "archive_file" "create-note-archive" {
   type = "zip"
 
-  source_dir  = "${path.module}/hello-world"
-  output_path = "${path.module}/hello-world.zip"
+  source_file = "lambdas/create-note.js"
+  output_path = "lambdas/create-note.zip"
 }
 
-resource "aws_s3_object" "lambda_hello_world" {
-  bucket = aws_s3_bucket.brattin-test1-s3.id
+resource "aws_lambda_function" "create-note" {
+  environment {
+    variables = {
+      NOTES_TABLE = aws_dynamodb_table.brattin_notes_table.name
+    }
+  }
 
-  key    = "hello-world.zip"
-  source = data.archive_file.lambda_hello_world.output_path
+  function_name = "create-note"
+  handler       = "lambdas/create-note.handler"
+  filename      = "lambdas/create-note.zip"
 
-  etag = filemd5(data.archive_file.lambda_hello_world.output_path)
-}
-
-# Create a Lambda from the zip file above, with logging
-
-resource "aws_lambda_function" "hello_world" {
-  function_name = "HelloWorld"
-
-  s3_bucket = aws_s3_bucket.brattin-test1-s3.id
-  s3_key    = aws_s3_object.lambda_hello_world.key
-
-  runtime = "nodejs20.x"
-  handler = "hello.handler"
-
-  # Hash is used to notify Lambda that there is a new version of the code
-  source_code_hash = data.archive_file.lambda_hello_world.output_base64sha256
+  memory_size = "128"
+  timeout     = 10
+  runtime     = "nodejs20.x"
 
   role = aws_iam_role.lambda_exec.arn
 }
 
-resource "aws_cloudwatch_log_group" "hello_world" {
-  name = "/aws/lambda/${aws_lambda_function.hello_world.function_name}"
+data "archive_file" "delete-note-archive" {
+  type = "zip"
+
+  source_file = "lambdas/delete-note.js"
+  output_path = "lambdas/delete-note.zip"
+}
+
+resource "aws_lambda_function" "delete-note" {
+  environment {
+    variables = {
+      NOTES_TABLE = aws_dynamodb_table.brattin_notes_table.name
+    }
+  }
+
+  function_name = "delete-note"
+  handler       = "lambdas/delete-note.handler"
+  filename      = "lambdas/delete-note.zip"
+
+  memory_size = "128"
+  timeout     = 10
+  runtime     = "nodejs20.x"
+
+  role = aws_iam_role.lambda_exec.arn
+}
+
+data "archive_file" "get-all-notes-archive" {
+  type = "zip"
+
+  source_file = "lambdas/get-all-notes.js"
+  output_path = "lambdas/get-all-notes.zip"
+}
+
+resource "aws_lambda_function" "get-all-notes" {
+  environment {
+    variables = {
+      NOTES_TABLE = aws_dynamodb_table.brattin_notes_table.name
+    }
+  }
+
+  function_name = "get-all-notes"
+  handler       = "lambdas/get-all-notes.handler"
+  filename      = "lambdas/get-all-notes.zip"
+
+  memory_size = "128"
+  timeout     = 10
+  runtime     = "nodejs20.x"
+
+  role = aws_iam_role.lambda_exec.arn
+}
+
+resource "aws_cloudwatch_log_group" "brattin_notes" {
+  name = "/aws/lambda/${aws_lambda_function.create-note.function_name}"
 
   retention_in_days = 30
 }
@@ -74,7 +130,7 @@ resource "aws_iam_role_policy_attachment" "lambda_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Create the api gateway needed to expose the lambda function
+# Create the api gateway needed to expose the lambda functions
 
 resource "aws_apigatewayv2_api" "lambda" {
   name          = "serverless_lambda_gw"
@@ -106,19 +162,49 @@ resource "aws_apigatewayv2_stage" "lambda" {
   }
 }
 
-resource "aws_apigatewayv2_integration" "hello_world" {
+resource "aws_apigatewayv2_integration" "create_note" {
   api_id = aws_apigatewayv2_api.lambda.id
 
-  integration_uri    = aws_lambda_function.hello_world.invoke_arn
+  integration_uri    = aws_lambda_function.create-note.invoke_arn
   integration_type   = "AWS_PROXY"
   integration_method = "POST"
 }
 
-resource "aws_apigatewayv2_route" "hello_world" {
+resource "aws_apigatewayv2_integration" "delete_note" {
   api_id = aws_apigatewayv2_api.lambda.id
 
-  route_key = "GET /hello"
-  target    = "integrations/${aws_apigatewayv2_integration.hello_world.id}"
+  integration_uri    = aws_lambda_function.delete-note.invoke_arn
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+}
+
+resource "aws_apigatewayv2_integration" "get_all_notes" {
+  api_id = aws_apigatewayv2_api.lambda.id
+
+  integration_uri    = aws_lambda_function.get-all-notes.invoke_arn
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+}
+
+resource "aws_apigatewayv2_route" "create_note" {
+  api_id = aws_apigatewayv2_api.lambda.id
+
+  route_key = "POST /create-note"
+  target    = "integrations/${aws_apigatewayv2_integration.create_note.id}"
+}
+
+resource "aws_apigatewayv2_route" "delete_note" {
+  api_id = aws_apigatewayv2_api.lambda.id
+
+  route_key = "POST /delete-note"
+  target    = "integrations/${aws_apigatewayv2_integration.delete_note.id}"
+}
+
+resource "aws_apigatewayv2_route" "get_all_notes" {
+  api_id = aws_apigatewayv2_api.lambda.id
+
+  route_key = "GET /get-all-notes"
+  target    = "integrations/${aws_apigatewayv2_integration.get_all_notes.id}"
 }
 
 resource "aws_cloudwatch_log_group" "api_gw" {
@@ -130,7 +216,25 @@ resource "aws_cloudwatch_log_group" "api_gw" {
 resource "aws_lambda_permission" "api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.hello_world.function_name
+  function_name = aws_lambda_function.create-note.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_apigatewayv2_api.lambda.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.delete-note.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_apigatewayv2_api.lambda.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get-all-notes.function_name
   principal     = "apigateway.amazonaws.com"
 
   source_arn = "${aws_apigatewayv2_api.lambda.execution_arn}/*/*"
