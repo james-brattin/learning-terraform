@@ -19,7 +19,7 @@ resource "aws_iam_role_policy" "dynamodb-lambda-policy" {
         {
            "Effect" : "Allow",
            "Action" : ["dynamodb:*"],
-           "Resource" : "${aws_dynamodb_table.tf_notes_table.arn}"
+           "Resource" : "${aws_dynamodb_table.brattin_notes_table.arn}"
         }
       ]
    })
