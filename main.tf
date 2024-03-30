@@ -144,7 +144,7 @@ resource "aws_apigatewayv2_stage" "lambda" {
   auto_deploy = true
 
   access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api_gw.arn
+    destination_arn = aws_cloudwatch_log_group.api_gw_log_group.arn
 
     format = jsonencode({
       requestId               = "$context.requestId"
@@ -207,13 +207,13 @@ resource "aws_apigatewayv2_route" "get_all_notes" {
   target    = "integrations/${aws_apigatewayv2_integration.get_all_notes.id}"
 }
 
-resource "aws_cloudwatch_log_group" "api_gw" {
+resource "aws_cloudwatch_log_group" "api_gw_log_group" {
   name = "/aws/api_gw/${aws_apigatewayv2_api.lambda.name}"
 
   retention_in_days = 30
 }
 
-resource "aws_lambda_permission" "api_gw" {
+resource "aws_lambda_permission" "api_gw_create_note" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.create-note.function_name
@@ -222,7 +222,7 @@ resource "aws_lambda_permission" "api_gw" {
   source_arn = "${aws_apigatewayv2_api.lambda.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "api_gw" {
+resource "aws_lambda_permission" "api_gw_delete_note" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.delete-note.function_name
@@ -231,7 +231,7 @@ resource "aws_lambda_permission" "api_gw" {
   source_arn = "${aws_apigatewayv2_api.lambda.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "api_gw" {
+resource "aws_lambda_permission" "api_gw_get_all_notes" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.get-all-notes.function_name
