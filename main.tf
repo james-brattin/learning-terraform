@@ -144,7 +144,7 @@ resource "aws_apigatewayv2_stage" "lambda" {
   auto_deploy = true
 
   access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api_gw_log_group.arn
+    destination_arn = aws_cloudwatch_log_group.api_gw.arn
 
     format = jsonencode({
       requestId               = "$context.requestId"
@@ -207,7 +207,7 @@ resource "aws_apigatewayv2_route" "get_all_notes" {
   target    = "integrations/${aws_apigatewayv2_integration.get_all_notes.id}"
 }
 
-resource "aws_cloudwatch_log_group" "api_gw_log_group" {
+resource "aws_cloudwatch_log_group" "api_gw" {
   name = "/aws/api_gw/${aws_apigatewayv2_api.lambda.name}"
 
   retention_in_days = 30
